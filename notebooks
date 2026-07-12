@@ -35,7 +35,8 @@
       "id": "ae03fd71",
       "metadata": {
         "colab": {
-          "base_uri": "https://localhost:8080/"
+          "base_uri": "https://localhost:8080/",
+          "height": 0
         },
         "id": "ae03fd71",
         "outputId": "9abee09a-ec4c-4df8-adc6-190278dfe7ec"
@@ -91,7 +92,8 @@
       "id": "cbf7dc0d",
       "metadata": {
         "colab": {
-          "base_uri": "https://localhost:8080/"
+          "base_uri": "https://localhost:8080/",
+          "height": 0
         },
         "id": "cbf7dc0d",
         "outputId": "85286d65-a704-44d2-f647-a7681f4ac5c0"
@@ -166,7 +168,8 @@
       "id": "b0d1f117",
       "metadata": {
         "colab": {
-          "base_uri": "https://localhost:8080/"
+          "base_uri": "https://localhost:8080/",
+          "height": 0
         },
         "id": "b0d1f117",
         "outputId": "276a9d92-57e1-4102-bf3c-69d3ea76c57f"
@@ -508,7 +511,8 @@
       "id": "19cfcff0",
       "metadata": {
         "colab": {
-          "base_uri": "https://localhost:8080/"
+          "base_uri": "https://localhost:8080/",
+          "height": 0
         },
         "id": "19cfcff0",
         "outputId": "38225598-072d-42d6-85c0-31c0fffda048"
@@ -596,14 +600,15 @@
     },
     {
       "cell_type": "code",
-      "execution_count": 8,
+      "execution_count": 9,
       "id": "48367f40",
       "metadata": {
         "colab": {
-          "base_uri": "https://localhost:8080/"
+          "base_uri": "https://localhost:8080/",
+          "height": 0
         },
         "id": "48367f40",
-        "outputId": "67ab718f-fd7b-43f4-af3e-a1c8fc5a4300"
+        "outputId": "e5a6637e-ce01-4c94-ca65-6a299b6efb5d"
       },
       "outputs": [
         {
@@ -647,14 +652,45 @@
     },
     {
       "cell_type": "code",
-      "execution_count": null,
+      "execution_count": 10,
       "id": "9d8af43b",
       "metadata": {
-        "id": "9d8af43b"
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "9d8af43b",
+        "outputId": "fc4bd507-5156-4fcf-fa89-7fec2de2b087"
       },
-      "outputs": [],
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "   position_tier        content_type       ctr\n",
+            "0           deep      feedly article  0.044000\n",
+            "2         page_1  comparison article  0.141239\n",
+            "5       page_3_5  comparison article  0.093968\n",
+            "8       striking  comparison article  0.147368\n",
+            "11         top_3  comparison article  0.000000\n"
+          ]
+        }
+      ],
       "source": [
-        "# Your discovery here\n"
+        "# Your discovery here\n",
+        "visible = df[df[\"impressions_90d\"] >= 100]\n",
+        "\n",
+        "ctr_by_type_pos = (\n",
+        "    visible.groupby([\"position_tier\", \"content_type\"])[\"ctr\"]\n",
+        "    .mean()\n",
+        "    .reset_index()\n",
+        ")\n",
+        "\n",
+        "# Worst content type within each position tier\n",
+        "worst_ctr = ctr_by_type_pos.loc[\n",
+        "    ctr_by_type_pos.groupby(\"position_tier\")[\"ctr\"].idxmin()\n",
+        "].sort_values(\"position_tier\")\n",
+        "\n",
+        "print(worst_ctr)"
       ]
     },
     {
