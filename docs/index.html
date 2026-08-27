@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beating the Rule: A Client-Holdout Model for Content Decline Review</title>
+<style>
+  :root{
+    --paper:#F7F5F0; --ink:#1B2430; --ink-soft:#4A5568; --rule:#D8D3C8;
+    --up:#2F6F4E; --down:#B03A2E; --accent:#2B4C7E; --mono-bg:#EFEBE1;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif; line-height:1.6;}
+  .mono,code,.metric{font-family:'IBM Plex Mono','SF Mono',Menlo,Consolas,monospace;}
+  header.hero{max-width:760px; margin:0 auto; padding:96px 24px 48px; border-bottom:1px solid var(--rule);}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:18px; display:flex; align-items:center; gap:8px;}
+  .eyebrow .glyph{color:var(--up); font-size:14px;}
+  h1{font-size:clamp(30px,5vw,44px); line-height:1.14; margin:0 0 20px; font-weight:600; letter-spacing:-.01em;}
+  .abstract{font-size:17px; color:var(--ink-soft); max-width:64ch;}
+  .meta-row{margin-top:32px; display:flex; gap:28px; flex-wrap:wrap;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);}
+  .meta-row span b{color:var(--ink); font-weight:600;}
+  main{max-width:760px; margin:0 auto; padding:0 24px 120px;}
+  section{padding:56px 0; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .sec-label{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:14px;}
+  h2{font-size:24px; margin:0 0 18px; font-weight:600;}
+  p{margin:0 0 16px; color:var(--ink);}
+  ul{margin:0 0 16px; padding-left:22px;} li{margin-bottom:8px;}
+  .callout{background:var(--mono-bg); border-left:3px solid var(--accent); padding:16px 20px;
+    font-size:15px; color:var(--ink-soft); margin:20px 0;}
+  .callout.warn{border-left-color:var(--down);}
+  .callout.win{border-left-color:var(--up);}
+  table{width:100%; border-collapse:collapse; margin:20px 0; font-size:14px;}
+  th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--rule);
+    font-family:'IBM Plex Mono',monospace; font-size:13px;}
+  th{color:var(--accent); font-weight:600; text-transform:uppercase; letter-spacing:.04em; font-size:11px;}
+  tr.highlight td{background:#E4F0E8; font-weight:600;}
+  .chart-slot img,.chart-slot embed{width:100%; height:auto; display:block;}
+  .chart-slot{border:1px solid var(--rule); background:#fff; padding:16px; margin:20px 0; border-radius:2px;}
+  .chart-caption{font-size:13px; color:var(--ink-soft); text-align:center; margin-top:10px;}
+  .action-row{display:flex; align-items:baseline; gap:12px; margin-bottom:12px;}
+  .action-tag{font-family:'IBM Plex Mono',monospace; font-size:11px; padding:2px 8px;
+    border-radius:2px; text-transform:uppercase; letter-spacing:.05em; flex-shrink:0;}
+  .tag-refresh{background:#FBEAE8; color:var(--down);}
+  .tag-ctr{background:#FDF3E5; color:#9A5B12;}
+  footer{max-width:760px; margin:0 auto; padding:40px 24px 80px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);}
+  footer a{color:var(--accent);}
+  @media (max-width:600px){header.hero{padding:64px 20px 36px;}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="eyebrow"><span class="glyph">&#9650;</span> FlyRank ML Internship — Search Intelligence Capstone</div>
+  <h1>Beating the Rule: A Client-Holdout Model for Content Decline Review</h1>
+  <p class="abstract">
+    Which pages should a content editor review first, out of thousands? This paper builds a
+    binary decline classifier on 30,000 anonymized FlyRank content pages across 32 clients,
+    validates it on a client-holdout split so the model is never tested on a client it trained
+    on, and compares it against a transparent hand-written baseline rule. The best model
+    (random forest) reaches precision@50 of <b>0.74</b> against the baseline's <b>0.24</b> —
+    roughly a <b>3× lift</b> — and produces a ranked, reason-coded review queue over all
+    30,000 pages.
+  </p>
+  <div class="meta-row">
+    <span>Author: <b>Karthik Jadhav</b></span>
+    <span>Lane: <b>Refresh / Content Opportunity Scoring</b></span>
+    <span>Data: <b>FlyRank ML Internship starter dataset (30,000 rows, 32 clients)</b></span>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <div class="sec-label">01 — Introduction</div>
+    <h2>What decision this supports</h2>
+    <p>
+      FlyRank's content system already flags pages with hand-written rules — a health score,
+      quick-win tags, needs-attention flags. These rules run in production and work, but they
+      run out where signals get numerous and tangled. This capstone asks a narrow, practical
+      question: on the same data, can a trained model outrank the hand rule at picking which
+      pages an editor should look at first? The output is a ranked review queue with plain-
+      language reason codes — decision support for a human, not an autonomous publishing system.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec-label">02 — Data</div>
+    <h2>Release, windows, exclusions</h2>
+    <p>
+      Data is the FlyRank ML Internship starter release: <code>content_refresh_anonymized.csv</code>
+      — 30,000 rows, one per pseudonymized content item, spanning 32 pseudonymized clients.
+      All metrics are trailing-90-day totals, with a 30-day-vs-prior-30-day comparison built in
+      for the trend signal.
+    </p>
+    <ul>
+      <li>No rows were dropped. Missingness (concentrated by <code>content_type</code> — e.g.
+        one content type ships with no keyword data at all) was handled by explicit imputation
+        flags and category filling, not row deletion, since dropping rows would have silently
+        removed entire content types.</li>
+      <li>No client names, domains, URLs, titles, or keywords appear in the dataset or this
+        paper — <code>content_id</code> and <code>client_id</code> are pseudonyms used only
+        for grouping and splitting.</li>
+    </ul>
+    <div class="callout">
+      Final scored set: all 30,000 pages. Declining-label rate: <b>54.2%</b>
+      (16,262 pages) — this is the number every metric below has to beat.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-label">03 — Methodology</div>
+    <h2>Label, features, baseline, validation, leakage checks</h2>
+    <p><b>Label</b> — <code>is_declining_label</code> = 1 when 30-day impressions fell more
+      than 20% versus the prior 30 days (<code>trend_direction == "down"</code>).</p>
+    <p><b>Features</b> — 17 numeric signals (impressions, clicks, CTR, position, content age,
+      freshness, word/char count, keyword competition) + 8 categorical signals (content type,
+      intent, age/freshness/word-count/impression/position tiers). <b>Excluded by design:</b>
+      <code>trend_direction</code> and <code>trend_pct</code> (the label's own source columns —
+      including them would let the model read the answer), and <code>provider_used</code> /
+      <code>model_used</code> (generation metadata, not a search signal).</p>
+    <p><b>Baseline</b> — a transparent hand-written rule (stale × visible × trouble-signal,
+      no fitted weights) — readable in one sentence, scored the same way the model is scored.</p>
+    <p><b>Models</b> — logistic regression, decision tree, random forest, compared on the
+      identical split and metric set.</p>
+    <p><b>Validation</b> — <b>client-holdout split</b>: held-out clients never appear in
+      training. This is the honest choice here over a random row split, because rows from the
+      same client share hidden structure (a client's site, content style, or SEO maturity) —
+      a random split would let a model partly memorize the client rather than learn the
+      general pattern.</p>
+    <div class="callout win">
+      Leakage self-check (run live in the notebook): confirmed the label's source columns and
+      all ID columns are absent from every model's feature list — zero overlap.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-label">04 — Results</div>
+    <h2>Model vs. baseline, same split</h2>
+    <table>
+      <tr><th>Model</th><th>ROC AUC</th><th>Avg. precision</th><th>Precision@50</th><th>Recall</th><th>F1</th></tr>
+      <tr><td>Baseline rule</td><td>0.627</td><td>0.468</td><td>0.240</td><td>0.189</td><td>0.274</td></tr>
+      <tr><td>Logistic regression</td><td>0.700</td><td>0.522</td><td>0.400</td><td>0.567</td><td>0.566</td></tr>
+      <tr><td>Decision tree</td><td>0.742</td><td>0.575</td><td>0.660</td><td>0.716</td><td>0.634</td></tr>
+      <tr class="highlight"><td>Random forest (best)</td><td>0.750</td><td>0.618</td><td>0.740</td><td>0.744</td><td>0.640</td></tr>
+    </table>
+    <div class="chart-slot">
+      <embed src="charts/top_feature_importance.svg" type="image/svg+xml"
+        onerror="this.style.display='none'"/>
+      <div class="chart-caption">Top feature importances — random forest. Visibility (days with
+        impressions, log impressions) and position dominate; content-generation metadata does not appear.</div>
+    </div>
+    <p>
+      Against a 54.2% base rate, the baseline rule's precision@50 of 0.24 is actually
+      <b>worse than chance at the top of the list</b> — "stale and visible" alone doesn't
+      isolate decliners. The random forest reaches 0.74, a <b>~3× lift</b> over the baseline,
+      and clearly clears the base rate. The decision tree is close behind at 0.66, with the
+      advantage of being fully readable as an if/else chain.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec-label">05 — Limitations &amp; honest framing</div>
+    <h2>What this is not</h2>
+    <ul>
+      <li>The label is a <b>rule about 30-day impression change</b>, not an editorial judgment
+        that a page needs work — declines can come from seasonality or a client's own site
+        change, not content quality.</li>
+      <li>This is a single 90-day snapshot. No refresh was actually observed, so nothing here
+        is a claim about what happens <i>after</i> a page is edited — it's <b>decision
+        support</b>, not a causal claim.</li>
+      <li>Precision@50 of 0.74 means roughly 13 of the top 50 flagged pages are still likely
+        false positives. The queue is a starting point for human review, not autopilot.</li>
+      <li>Client-holdout validation is honest for generalizing to <i>new</i> clients within
+        this same portfolio — it says nothing about clients or verticals outside this dataset.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-label">06 — Ranked recommendations</div>
+    <h2>Top opportunities from this run</h2>
+    <p>Full ranked queue (all 30,000 pages) is in <code>outputs/refresh_queue.csv</code>.
+      Highest-scoring examples:</p>
+    <div class="action-row"><span class="action-tag tag-ctr">Refresh + review CTR</span>
+      <span>Score 81.7 — declining with demand, low CTR despite visibility, low engagement (12,834 impressions/90d)</span></div>
+    <div class="action-row"><span class="action-tag tag-ctr">Refresh + review CTR</span>
+      <span>Score 81.6 — declining with demand, low CTR despite visibility (2,498 impressions/90d)</span></div>
+    <div class="action-row"><span class="action-tag tag-refresh">Refresh</span>
+      <span>Score 80.4 — declining with demand, model-flagged decline risk, visible opportunity (4,366 impressions/90d)</span></div>
+    <p style="margin-top:8px; color:var(--ink-soft); font-size:14px;">
+      3,602 pages fall in the high-confidence tier; 8,188 are tagged <code>refresh</code> and
+      6,654 <code>refresh_and_review_ctr</code> — the two largest action groups.
+    </p>
+  </section>
+
+  <section>
+    <div class="sec-label">07 — Reproducibility</div>
+    <h2>Notebooks &amp; repo</h2>
+    <ul>
+      <li><code>work/notebooks/capstone.ipynb</code> — runs the full pipeline live and reproduces every number above</li>
+      <li><code>scripts/01</code>–<code>04</code> — the reference pipeline this notebook calls</li>
+      <li>Full repo: <a href="https://github.com/karthikj5453/flyrank-ml-internship-starter">github.com/karthikj5453/flyrank-ml-internship-starter</a></li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="sec-label">08 — Acknowledgments &amp; data credit</div>
+    <p>Built on the FlyRank ML Internship dataset —
+      <a href="https://flyrank.ai" target="_blank" rel="noopener">flyrank.ai</a>.</p>
+  </section>
+
+</main>
+
+<footer>
+  Deployed via GitHub Pages · <a href="https://github.com/karthikj5453">github.com/karthikj5453</a>
+</footer>
+
+</body>
+</html>
