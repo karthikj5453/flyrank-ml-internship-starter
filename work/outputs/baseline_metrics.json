@@ -1,0 +1,21 @@
+{
+  "n_rows": 30000,
+  "n_flagged": 7234,
+  "base_rate_declining": 0.5421,
+  "flagged_rate_declining": 0.6175,
+  "precision_at_10": 0.9,
+  "precision_at_20": 0.9,
+  "precision_at_50": 0.88,
+  "precision_at_100": 0.75,
+  "rule": {
+    "stale_days": 91,
+    "min_impressions": 300,
+    "impression_cap": 3000,
+    "score": "min(impressions_90d, cap) * days_since_last_update"
+  },
+  "top_client_share_top50": 0.7,
+  "lead_client_declining_rate": 0.937,
+  "diversified_precision_at_10": 0.7,
+  "diversified_precision_at_20": 0.65,
+  "diversified_precision_at_50": 0.56
+}
